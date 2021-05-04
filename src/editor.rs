@@ -90,15 +90,21 @@ impl Editor for EffectEditor {
             .with_title("VIBE_MACHINE")
             .with_inner_size(WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32);
 
-            self.logger.log(">>> creating application.\n");
-        Application::new(window_description, move |state, window|{
+        self.logger.log(">>> creating application.\n");
+        let app = Application::new(window_description, move |state, window|{
             state.add_theme(THEME);
 
             EffectWidget::new(params.clone()).build(state, window, |builder| {
                 builder
             });
-        }).open_parented(&VstParent(parent));
+        });
         
+        self.logger.log(&format!(">>> VstParent from parent pointer: {:?}.\n", parent)[..]);
+        let vst_parent = VstParent(parent);
+
+        self.logger.log(">>> opening app with VstParent.\n");
+        app.open_parented(&vst_parent);
+
         self.logger.log("[END] Editor::open()\n");
         true
     }
