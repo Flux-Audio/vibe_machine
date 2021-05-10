@@ -30,12 +30,14 @@ use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+use std::collections::HashMap;
 
 // internal dependencies
 mod process;
 mod logger;
 mod editor;
 mod algo;
+mod widgets;
 use crate::logger::Logger;
 use crate::editor::EffectEditor;
 use crate::algo::Dropouts;
@@ -44,31 +46,25 @@ use crate::algo::Dropouts;
 const DEBUG_LOGGING_ENABLED: bool = true;
 
 // === PARAMETERS ===
-
-
 pub struct EffectParameters {
-    time: AtomicFloat,
-    vibe: AtomicFloat,       // adds modulation to delay time, flutter if age is up
-    age: AtomicFloat,        // adds soft sat and filtering, flutter if vibe is up
-    tone: AtomicFloat,
-    pitch_mode: AtomicFloat,
-    feedback: AtomicFloat,
-    sat: AtomicFloat,
-    dry_wet: AtomicFloat,
+    dict: HashMap<i32, AtomicFloat>,
 }
 
 impl Default for EffectParameters {
     fn default() -> Self {
-        Self {
-            time: AtomicFloat::new(0.25),
-            vibe: AtomicFloat::new(0.0),       // adds modulation to delay time, flutter if age is up
-            age: AtomicFloat::new(0.0),        // adds soft sat and filtering, flutter if vibe is up
-            tone: AtomicFloat::new(0.8),
-            pitch_mode: AtomicFloat::new(0.5),
-            feedback: AtomicFloat::new(0.0),
-            sat: AtomicFloat::new(0.0),
-            dry_wet: AtomicFloat::new(0.0),
-        }
+        let mut ret = Self {
+            dict: HashMap::new(),
+        };
+        ret.dict.insert(0, AtomicFloat::new(0.25));   // time
+        ret.dict.insert(1, AtomicFloat::new(0.0 ));   // vibe
+        ret.dict.insert(2, AtomicFloat::new(0.0 ));   // age
+        ret.dict.insert(3, AtomicFloat::new(0.8 ));   // tone
+        ret.dict.insert(4, AtomicFloat::new(0.5 ));   // pitch mode
+        ret.dict.insert(5, AtomicFloat::new(0.0 ));   // feedback
+        ret.dict.insert(6, AtomicFloat::new(0.0 ));   // saturation
+        ret.dict.insert(7, AtomicFloat::new(0.5 ));   // dry / wet
+
+        return ret;
     }
 }
 
@@ -76,61 +72,55 @@ impl Default for EffectParameters {
 impl PluginParameters for EffectParameters {
     // the `get_parameter` function reads the value of a parameter.
     fn get_parameter(&self, index: i32) -> f32 {
-        match index {
-            0 => self.time.get(),
-            1 => self.vibe.get(),
-            2 => self.age.get(),
-            3 => self.tone.get(),
-            4 => self.pitch_mode.get(),
-            5 => self.feedback.get(),
-            6 => self.sat.get(),
-            7 => self.dry_wet.get(),
-            _ => 0.0,
+        match self.dict.get(&index) {
+            Some(p) => p.get(),
+            None => 0.0,
         }
     }
 
     // the `set_parameter` function sets the value of a parameter.
     fn set_parameter(&self, index: i32, val: f32) {
-        #[allow(clippy::single_match)]
-        match index {
-            0 => self.time.set(val),
-            1 => self.vibe.set(val),
-            2 => self.age.set(val),
-            3 => self.tone.set(val),
-            4 => self.pitch_mode.set(val),
-            5 => self.feedback.set(val),
-            6 => self.sat.set(val),
-            7 => self.dry_wet.set(val),
-            _ => (),
-        }
+        match self.dict.get(&index) {
+            Some(p) => p.set(val),
+            None => (),
+        };
     }
     
     // This is what will display underneath our control.  We can
     // format it into a string that makes the most since.
     fn get_parameter_text(&self, index: i32) -> String {
+        let def_val = &AtomicFloat::new(0.0);
         match index {
-            0 => format!("{:.2} seconds", self.time.get()*4.45 + 0.05),
-            1 => format!("{:.2}", self.vibe.get()),
-            2 => format!("{:.2}", self.age.get()),
-            3 => format!("{:.2}", self.tone.get()),
-            4 => format!("{}", match (self.pitch_mode.get()*130.0).round() as u32 {
-                0..=9     => "+7, -12",
-                10..=19   => "-12, -12",
-                20..=29   => "-5, -12",
-                30..=39   => "+12, -12",
-                40..=49   => "-5, -5",
-                50..=59   => "0, -5",
-                60..=69   => "0, 0",
-                70..=79   => "+7, 0",
-                80..=89   => "+7, +7",
-                90..=99   => "+7, -5",
-                100..=109 => "+12, +7",
-                110..=119 => "+12, +12",
-                _         => "+12, -5"
+            0 => format!("{:.2} seconds", 
+                self.dict.get(&0).unwrap().get() * 4.45 + 0.05),
+            1 => format!("{:.2}", 
+                self.dict.get(&1).unwrap().get()),
+            2 => format!("{:.2}", 
+                self.dict.get(&2).unwrap().get()),
+            3 => format!("{:.2}", 
+                self.dict.get(&3).unwrap().get()),
+            4 => format!("{}", 
+                match (self.dict.get(&4).unwrap().get() * 130.0).round() as u32 {
+                    0..=9     => "+7, -12",
+                    10..=19   => "-12, -12",
+                    20..=29   => "-5, -12",
+                    30..=39   => "+12, -12",
+                    40..=49   => "-5, -5",
+                    50..=59   => "0, -5",
+                    60..=69   => "0, 0",
+                    70..=79   => "+7, 0",
+                    80..=89   => "+7, +7",
+                    90..=99   => "+7, -5",
+                    100..=109 => "+12, +7",
+                    110..=119 => "+12, +12",
+                    _         => "+12, -5"
             }),
-            5 => format!("{:.2}", self.feedback.get()*0.95),
-            6 => format!("{:.2}", self.sat.get()),
-            7 => format!("{:.2}% wet", self.dry_wet.get()*100.0),
+            5 => format!("{:.2}", 
+                self.dict.get(&5).unwrap().get() * 0.95),
+            6 => format!("{:.2}", 
+                self.dict.get(&6).unwrap().get()),
+            7 => format!("{:.2}% wet", 
+                self.dict.get(&7).unwrap().get() * 100.0),
             _ => "".to_string(),
         }
     }
@@ -172,8 +162,8 @@ pub struct Effect {
     // delay lines
     dly_l: DelayLine,
     dly_r: DelayLine,
-    combs_l: DelayLine,
-    combs_r: DelayLine,
+    // combs_l: DelayLine,
+    // combs_r: DelayLine,
 
     // wow LFO's
     lfo_1: ParOsc,
@@ -234,6 +224,9 @@ impl Default for Effect {
     fn default() -> Effect {
         let params = Arc::new(EffectParameters::default());
         let logger = Arc::new(Logger::new("/flux-audio", "VIBE_MACHINE", DEBUG_LOGGING_ENABLED));
+        let mut palette: HashMap<String, (f32, f32, f32, f32)> = HashMap::new();
+        palette.insert("knob background".to_string(), (0.2, 0.2, 0.2, 1.0));
+        palette.insert("knob fill".to_string(), (0.9, 0.9, 0.9, 1.0));
         Effect {
             // TODO: FIXME: achieve sample rate independence, this requires updating dsp_lab
             // so that things can change their sr after being instantiated.
@@ -242,6 +235,7 @@ impl Default for Effect {
                 logger: logger.clone(),
                 params: params.clone(),
                 is_open: false,
+                palette: Arc::new(palette),
             }),
             logger: logger.clone(),
 
@@ -250,10 +244,10 @@ impl Default for Effect {
             scale: 1.0,
 
             // delay lines
-            dly_l:   DelayLine::new(11000.0, 44100.0, InterpMethod::Quadratic, MixMethod::Sqrt),
-            dly_r:   DelayLine::new(11000.0, 44100.0, InterpMethod::Quadratic, MixMethod::Sqrt),
-            combs_l: DelayLine::new(2200.0,  44100.0, InterpMethod::Truncate,  MixMethod::Sqrt),
-            combs_r: DelayLine::new(2200.0,  44100.0, InterpMethod::Truncate,  MixMethod::Sqrt),
+            dly_l:   DelayLine::new(11000.0, 44100.0, InterpMethod::Quadratic, MixMethod::Average),
+            dly_r:   DelayLine::new(11000.0, 44100.0, InterpMethod::Quadratic, MixMethod::Average),
+            //combs_l: DelayLine::new(2200.0,  44100.0, InterpMethod::Truncate,  MixMethod::Sqrt),
+            //combs_r: DelayLine::new(2200.0,  44100.0, InterpMethod::Truncate,  MixMethod::Sqrt),
 
             // wow LFO's
             lfo_1: ParOsc::new(0.0, 44100.0),

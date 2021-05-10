@@ -7,10 +7,12 @@ use tuix::*;
 
 // stl dependencies
 use std::sync::Arc;
+use std::collections::HashMap;
 
 // internal dependencies
 use super::EffectParameters;
 use crate::logger::Logger;
+use crate::widgets::*;
 
 // === GLOBALS ===
 const WINDOW_WIDTH:  usize = 300;
@@ -18,48 +20,11 @@ const WINDOW_HEIGHT: usize = 300;
 static THEME: &str = include_str!("theme.css");
 
 // === EDITOR ===
-pub struct EffectWidget {
-    control: Entity,
-    params: Arc<EffectParameters>,
-}
-
-impl EffectWidget {
-    pub fn new(params: Arc<EffectParameters>) -> Self {
-        EffectWidget {
-            control: Entity::null(),
-            params: params.clone(),
-        }
-    }
-}
-
-impl Widget for EffectWidget {
-    type Ret = Entity;
-    fn on_build(&mut self, state: &mut State, entity: Entity) -> Self::Ret {
-        
-        let val = self.params.dry_wet.get();
-        self.control = ValueKnob::new("", val, 0.0, 1.0).build(state, entity, |builder| builder);
-        
-        self.control
-    }
-
-    fn on_event(&mut self, _state: &mut State, _entity: Entity, event: &mut Event) {
-
-        if let Some(slider_event) = event.message.downcast::<SliderEvent>() {
-            match slider_event {
-                SliderEvent::ValueChanged(val) => {
-                    self.params.dry_wet.set(*val);
-                }
-
-                _ => {}
-            }
-        }
-    }
-}
-
 pub struct EffectEditor {
     pub logger: Arc<Logger>,
     pub params: Arc<EffectParameters>,
     pub is_open: bool,
+    pub palette: Arc<HashMap<String, (f32, f32, f32, f32)>>,
 }
 
 impl Editor for EffectEditor {
@@ -84,6 +49,7 @@ impl Editor for EffectEditor {
         self.is_open = true;
 
         let params = self.params.clone();
+        let palette = self.palette.clone();
 
         self.logger.log(">>> creating window description.\n");
         let window_description = WindowDescription::new()
@@ -94,8 +60,8 @@ impl Editor for EffectEditor {
         let app = Application::new(window_description, move |state, window|{
             state.add_theme(THEME);
 
-            EffectWidget::new(params.clone()).build(state, window, |builder| {
-                builder
+            CustomKnob::new(params.clone(), 0, "".to_string(), "".to_string(), "".to_string(), "".to_string() ).build(state, window, |builder| {
+                builder.set_width(Units::Pixels(100.0))
             });
         });
         

@@ -14,6 +14,7 @@ rust_dsp_utils = {git = "https://github.com/Flux-Audio/rust-dsp-utils", branch="
 dsp_lab = {git = "https://github.com/Flux-Audio/dsp_lab.git", branch="master"}
 raw-window-handle = "0.3"
 tuix = {git = "https://github.com/geom3trik/tuix", branch = "experiment", features = ["baseview"], default-features = false}
+femtovg = { git = "https://github.com/femtovg/femtovg", branch = "master"}
 
 
 [lib]

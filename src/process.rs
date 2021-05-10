@@ -28,14 +28,14 @@ use super::Effect;
 
 pub fn process_chunk(parent: &mut Effect, buffer: &mut AudioBuffer<f32>) {
     // === get parameters === parameter scaling ===
-    let time_raw = parent.params.time.get() as f64 * 4450.0 + 50.0;
-    let vibe_raw = parent.params.vibe.get() as f64;
-    let age_raw = parent.params.age.get()  as f64;
-    let fb_raw = parent.params.feedback.get() as f64 * 0.95;
-    let tone_raw = parent.params.tone.get() as f64;
-    let pitch_mode_raw = (parent.params.pitch_mode.get()*130.0).round() as u32;
-    let sat_raw = parent.params.sat.get() as f64 * 2.0 + 0.25;
-    let wet_raw = parent.params.dry_wet.get() as f64;
+    let time_raw = parent.params.dict.get(&0).unwrap().get() as f64 * 4450.0 + 50.0;
+    let vibe_raw = parent.params.dict.get(&1).unwrap().get()as f64;
+    let age_raw = parent.params.dict.get(&2).unwrap().get()  as f64;
+    let fb_raw = parent.params.dict.get(&3).unwrap().get() as f64 * 0.95;
+    let tone_raw = parent.params.dict.get(&4).unwrap().get() as f64;
+    let pitch_mode_raw = (parent.params.dict.get(&5).unwrap().get() * 130.0).round() as u32;
+    let sat_raw = parent.params.dict.get(&6).unwrap().get() as f64 * 2.0 + 0.25;
+    let wet_raw = parent.params.dict.get(&7).unwrap().get() as f64;
 
     // === prepare to process chunk ===
     // TODO: enable flush-to-zero and remove all the TINY stuff

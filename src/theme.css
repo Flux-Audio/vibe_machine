@@ -1,31 +1,43 @@
-knob>.back {
-    background-color: #353535;
+/* Generic color palette, any component can inherit this */
+.back_col {
+    background-color: red;
+}
+.main_col {
+    background-color: green;
+}
+.fill_col_1 {
+    background-color: blue;
+}
+.fill_col_2 {
+    background-color: blueviolet;
+}
+.fill_col_3 {
+    background-color: magenta;
 }
 
-knob>.slider {
-    background-color: #f74c00;
+/* Generic text styles TODO: not yet implemented in Tuix
+.heading {
+    font: Montserrat;
+    font-size: 48pt;
+    color: #f0f0f0;
 }
-
-knob>.tick {
-    background-color: #c8c8c8;
+.subtitle {
+    font: IBMPlexSans;
+    font-size: 18pt;
+    color: #f0f0f0;
 }
-
-value_knob {
-    align-items: center;
-    margin: 10px;
+.label {
+    font: IBMPlexSansCondensed;
+    font-size: 24pt;
+    color: #f0f0f0;
 }
-
-value_knob textbox {
-    width: 50px;
-    height: 25px;
-    background-color: #353535;
-    border-radius: 2px;
-    text-justify: center;
+.legal {
+    font: IBMPlexSansCondensed;
+    font-size: 12pt;
+    color: #f0f0f078;
 }
-
-value_knob label {
-    color: white;
-    width: 50px;
-    height: 25px;
-    text-justify: center;
-}
+.readout {
+    font: IBMPlexMono;
+    font-size: 12pt;
+    color: #f0f0f078;
+}*/
