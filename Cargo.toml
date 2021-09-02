@@ -18,7 +18,7 @@ femtovg = { git = "https://github.com/femtovg/femtovg", branch = "master"}
 
 
 [lib]
-name = "VIBE_MACHINE_v0_1_0_dev"
+name = "VIBE_MACHINE"
 crate-type = ["cdylib"]
 
 [profile.dev]

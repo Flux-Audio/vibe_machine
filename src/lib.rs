@@ -91,8 +91,8 @@ impl PluginParameters for EffectParameters {
     fn get_parameter_text(&self, index: i32) -> String {
         let def_val = &AtomicFloat::new(0.0);
         match index {
-            0 => format!("{:.2} seconds", 
-                self.dict.get(&0).unwrap().get() * 4.45 + 0.05),
+            0 => format!("{:.2}", 
+                self.dict.get(&0).unwrap().get()),
             1 => format!("{:.2}", 
                 self.dict.get(&1).unwrap().get()),
             2 => format!("{:.2}", 
@@ -116,11 +116,11 @@ impl PluginParameters for EffectParameters {
                     _         => "+12, -5"
             }),
             5 => format!("{:.2}", 
-                self.dict.get(&5).unwrap().get() * 0.95),
+                self.dict.get(&5).unwrap().get()),
             6 => format!("{:.2}", 
                 self.dict.get(&6).unwrap().get()),
-            7 => format!("{:.2}% wet", 
-                self.dict.get(&7).unwrap().get() * 100.0),
+            7 => format!("{:.2}", 
+                self.dict.get(&7).unwrap().get()),
             _ => "".to_string(),
         }
     }
@@ -132,14 +132,16 @@ impl PluginParameters for EffectParameters {
             1 => "vibe",
             2 => "age",
             3 => "tone",
-            4 => "pitch mode",
+            4 => "pitch",
             5 => "feedback",
-            6 => "sat",
-            7 => "dry / wet",
+            6 => "distortion",
+            7 => "moisture",
             _ => "",
         }
         .to_string()
     }
+
+    // TODO: missing methods for preset management
 }
 
 
@@ -150,7 +152,7 @@ pub struct Effect {
     params: Arc<EffectParameters>,
 
     // store a handle to the GUI
-    editor: Option<EffectEditor>,
+    // editor: Option<EffectEditor>,
 
     // store a handle to the openned log file (None if debugging is disabled)
     logger: Arc<Logger>,
@@ -194,6 +196,12 @@ pub struct Effect {
     block_dc_r: DcBlock,
     tone_lp_l: LowPass1P,
     tone_lp_r: LowPass1P,
+    fb_antialias_l_1: LowPass1P,
+    fb_antialias_r_1: LowPass1P,
+    fb_antialias_l_2: LowPass1P,
+    fb_antialias_r_2: LowPass1P,
+    fb_antialias_l_3: LowPass1P,
+    fb_antialias_r_3: LowPass1P,
 
     // param filters
     param_1_lp: LowPass1P,
@@ -231,12 +239,12 @@ impl Default for Effect {
             // TODO: FIXME: achieve sample rate independence, this requires updating dsp_lab
             // so that things can change their sr after being instantiated.
             params: params.clone(),
-            editor: Some(EffectEditor {
+            /* editor: Some(EffectEditor {
                 logger: logger.clone(),
                 params: params.clone(),
                 is_open: false,
                 palette: Arc::new(palette),
-            }),
+            }), */
             logger: logger.clone(),
 
             // meta variables
@@ -278,6 +286,12 @@ impl Default for Effect {
             block_dc_r: DcBlock::new(44100.0),
             tone_lp_l: LowPass1P::new(44100.0),
             tone_lp_r: LowPass1P::new(44100.0),
+            fb_antialias_l_1: LowPass1P::new(44100.0),
+            fb_antialias_r_1: LowPass1P::new(44100.0),
+            fb_antialias_l_2: LowPass1P::new(44100.0),
+            fb_antialias_r_2: LowPass1P::new(44100.0),
+            fb_antialias_l_3: LowPass1P::new(44100.0),
+            fb_antialias_r_3: LowPass1P::new(44100.0),
 
             // param filters
             param_1_lp: LowPass1P::new(44100.0),
@@ -320,7 +334,7 @@ impl Plugin for Effect {
             outputs: 2,
             // This `parameters` bit is important; without it, none of our
             // parameters will be shown!
-            parameters: 0,
+            parameters: 8,
             category: Category::Effect,
             initial_delay: 0,
             ..Default::default()
@@ -375,6 +389,16 @@ impl Plugin for Effect {
         self.flut_sin_1.set_freq(5.5372407616758321234567890132435842678934068);
         self.flut_sin_2.set_freq(8.9594437562828531234567891011121314151617181);
 
+
+        // Filters
+        self.fb_antialias_l_1.set_cutoff(15000.0);
+        self.fb_antialias_r_1.set_cutoff(15000.0);
+        self.fb_antialias_l_2.set_cutoff(15000.0);
+        self.fb_antialias_r_2.set_cutoff(15000.0);
+        self.fb_antialias_l_3.set_cutoff(15000.0);
+        self.fb_antialias_r_3.set_cutoff(15000.0);
+
+
         // dropout LFO's
         // They are mutually irrational, so they never sync up
         // - drop_1 is  7 * e/2.7
@@ -394,6 +418,7 @@ impl Plugin for Effect {
         self.param_8_lp.set_cutoff(20.0);
     }
 
+    /*
     fn get_editor(&mut self) -> Option<Box<dyn Editor>> {
         self.logger.log("Plugin::get_editor() callback!\n");
 
@@ -402,7 +427,7 @@ impl Plugin for Effect {
         } else {
             None
         }
-    }
+    } */
 
     fn can_do(&self, can_do: CanDo) -> vst::api::Supported {
         self.logger.log("Plugin::can_do() callback!\n");

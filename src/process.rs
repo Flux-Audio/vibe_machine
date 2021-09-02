@@ -12,7 +12,7 @@ use dsp_lab::core::DenormalDither;
 use dsp_lab::core::osc::{ParOsc, AsymTriOsc};
 use dsp_lab::traits::{Source, Process};
 use dsp_lab::emulation::Hysteresis;
-use dsp_lab::utils::math::x_fade;
+use dsp_lab::utils::math::{x_fade, fast_sigmoid};
 
 // stl stuff
 use std::sync::Arc;
@@ -25,16 +25,19 @@ use std::path::Path;
 // internal dependencies
 use super::Effect;
 
+// === globals ===
+const WIDTH: f64 = 0.8;
+
 
 pub fn process_chunk(parent: &mut Effect, buffer: &mut AudioBuffer<f32>) {
     // === get parameters === parameter scaling ===
     let time_raw = parent.params.dict.get(&0).unwrap().get() as f64 * 4450.0 + 50.0;
-    let vibe_raw = parent.params.dict.get(&1).unwrap().get()as f64;
+    let vibe_raw = parent.params.dict.get(&1).unwrap().get() as f64;
     let age_raw = parent.params.dict.get(&2).unwrap().get()  as f64;
-    let fb_raw = parent.params.dict.get(&3).unwrap().get() as f64 * 0.95;
-    let tone_raw = parent.params.dict.get(&4).unwrap().get() as f64;
-    let pitch_mode_raw = (parent.params.dict.get(&5).unwrap().get() * 130.0).round() as u32;
-    let sat_raw = parent.params.dict.get(&6).unwrap().get() as f64 * 2.0 + 0.25;
+    let fb_raw = parent.params.dict.get(&5).unwrap().get() as f64;
+    let tone_raw = parent.params.dict.get(&3).unwrap().get() as f64;
+    let pitch_mode_raw = (parent.params.dict.get(&4).unwrap().get() * 130.0).round() as u32;
+    let sat_raw = parent.params.dict.get(&6).unwrap().get() as f64 * 6.0 + 0.125;
     let wet_raw = parent.params.dict.get(&7).unwrap().get() as f64;
 
     // === prepare to process chunk ===
@@ -80,7 +83,7 @@ pub fn process_chunk(parent: &mut Effect, buffer: &mut AudioBuffer<f32>) {
         // === macro mappings ===
         // NOTE: parameters on the UI are macros for a larger set of hidden
         // parameters
-        let dry      = 1.0 - wet + 2.0;
+        let dry      = 1.0 - wet;
         let flutter  = age * age;
         let drop_amt = age;
         let squareness   = 0.8 - sat * 0.8;
@@ -168,32 +171,42 @@ pub fn process_chunk(parent: &mut Effect, buffer: &mut AudioBuffer<f32>) {
         tone_lp_r.set_cutoff(tone * 18000.0);
     
         // === inputs pre-processing ===
-        let mut l = parent.in_dith_l.step(*left_in  as f64) + parent.fb_l;
-        let mut r = parent.in_dith_r.step(*right_in as f64) + parent.fb_r;
+        let mut l = parent.in_dith_l.step(*left_in  as f64);
+        let mut r = parent.in_dith_r.step(*right_in as f64);
         let dry_l = l;
         let dry_r = r;
+        l += parent.fb_l;
+        r += parent.fb_r;
 
         // === main chain ===
-        l = hyst_l.step(l * sat) / sat;
-        r = hyst_r.step(r * sat) / sat;
+        l = fast_sigmoid(l * sat) / (sat);
+        r = fast_sigmoid(r * sat) / (sat);
         //l = x_fade(l, tone, combs_l.step(l));
         //r = x_fade(r, tone, combs_r.step(r));
         l = x_fade(l, drop_amt, drop_l.step(l));
         r = x_fade(r, drop_amt, drop_r.step(r));
         l = chain!(l => dly_l => tone_lp_l);
         r = chain!(r => dly_r => tone_lp_r);
+        l = l * WIDTH + r * (1.0 - WIDTH);
+        r = r * WIDTH + l * (1.0 - WIDTH);
+
+        // === output ===
+        *left_out  = (l * wet + dry_l * dry) as f32;
+        *right_out = (r * wet + dry_r * dry) as f32;
 
         // === feedback chain ===
         let fb_dith_l = &mut parent.fb_dith_l;
         let fb_dith_r = &mut parent.fb_dith_r;
         let block_dc_l = &mut parent.block_dc_l;
         let block_dc_r = &mut parent.block_dc_r;
-        parent.fb_l = chain!(l * fb => block_dc_l => fb_dith_l);
-        parent.fb_r = chain!(r * fb => block_dc_r => fb_dith_r);
-
-        // === output ===
-        *left_out  = (l * wet + dry_l * dry) as f32;
-        *right_out = (r * wet + dry_r * dry) as f32;
+        let fb_antialias_l_1 = &mut parent.fb_antialias_l_1;
+        let fb_antialias_r_1 = &mut parent.fb_antialias_r_1;
+        let fb_antialias_l_2 = &mut parent.fb_antialias_l_2;
+        let fb_antialias_r_2 = &mut parent.fb_antialias_r_2;
+        let fb_antialias_l_3 = &mut parent.fb_antialias_l_3;
+        let fb_antialias_r_3 = &mut parent.fb_antialias_r_3;
+        parent.fb_l = chain!(l * fb => block_dc_l => fb_antialias_l_1 => fb_antialias_l_2 => fb_antialias_l_3 => fb_dith_l);
+        parent.fb_r = chain!(r * fb => block_dc_r => fb_antialias_r_1 => fb_antialias_r_2 => fb_antialias_r_3 => fb_dith_r);
     }
 
     // === post-process cleanup ===
