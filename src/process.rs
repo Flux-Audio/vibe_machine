@@ -1,6 +1,5 @@
 // third-party libs
 use vst::buffer::AudioBuffer;
-use vst::editor::Editor;
 use vst::plugin::{Category, Info, Plugin, PluginParameters};
 use vst::util::AtomicFloat;
 
@@ -12,7 +11,7 @@ use dsp_lab::core::DenormalDither;
 use dsp_lab::core::osc::{ParOsc, AsymTriOsc};
 use dsp_lab::traits::{Source, Process};
 use dsp_lab::emulation::Hysteresis;
-use dsp_lab::utils::math::{x_fade, fast_sigmoid};
+use dsp_lab::utils::math::{x_fade, fast_sigmoid, var_clip};
 
 // stl stuff
 use std::sync::Arc;
@@ -34,7 +33,7 @@ pub fn process_chunk(parent: &mut Effect, buffer: &mut AudioBuffer<f32>) {
     let time_raw = parent.params.dict.get(&0).unwrap().get() as f64 * 4450.0 + 50.0;
     let vibe_raw = parent.params.dict.get(&1).unwrap().get() as f64;
     let age_raw = parent.params.dict.get(&2).unwrap().get()  as f64;
-    let fb_raw = parent.params.dict.get(&5).unwrap().get() as f64;
+    let fb_raw = parent.params.dict.get(&5).unwrap().get() as f64 * 2.0;
     let tone_raw = parent.params.dict.get(&3).unwrap().get() as f64;
     let pitch_mode_raw = (parent.params.dict.get(&4).unwrap().get() * 130.0).round() as u32;
     let sat_raw = parent.params.dict.get(&6).unwrap().get() as f64 * 6.0 + 0.125;
@@ -205,8 +204,8 @@ pub fn process_chunk(parent: &mut Effect, buffer: &mut AudioBuffer<f32>) {
         let fb_antialias_r_2 = &mut parent.fb_antialias_r_2;
         let fb_antialias_l_3 = &mut parent.fb_antialias_l_3;
         let fb_antialias_r_3 = &mut parent.fb_antialias_r_3;
-        parent.fb_l = chain!(l * fb => block_dc_l => fb_antialias_l_1 => fb_antialias_l_2 => fb_antialias_l_3 => fb_dith_l);
-        parent.fb_r = chain!(r * fb => block_dc_r => fb_antialias_r_1 => fb_antialias_r_2 => fb_antialias_r_3 => fb_dith_r);
+        parent.fb_l = chain!(var_clip(l * fb, 0.8) => block_dc_l => fb_antialias_l_1 => fb_antialias_l_2 => fb_antialias_l_3 => fb_dith_l);
+        parent.fb_r = chain!(var_clip(r * fb, 0.8) => block_dc_r => fb_antialias_r_1 => fb_antialias_r_2 => fb_antialias_r_3 => fb_dith_r);
     }
 
     // === post-process cleanup ===

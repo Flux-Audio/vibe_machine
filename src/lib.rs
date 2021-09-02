@@ -9,7 +9,6 @@ extern crate dsp_lab;
 
 // third-party libs
 use vst::buffer::AudioBuffer;
-use vst::editor::Editor;
 use vst::plugin::{Category, Info, Plugin, PluginParameters, CanDo};
 use vst::util::AtomicFloat;
 
@@ -35,11 +34,10 @@ use std::collections::HashMap;
 // internal dependencies
 mod process;
 mod logger;
-mod editor;
+//mod editor;
 mod algo;
-mod widgets;
+//mod widgets;
 use crate::logger::Logger;
-use crate::editor::EffectEditor;
 use crate::algo::Dropouts;
 
 // === GLOBALS ===
@@ -115,8 +113,9 @@ impl PluginParameters for EffectParameters {
                     110..=119 => "+12, +12",
                     _         => "+12, -5"
             }),
-            5 => format!("{:.2}", 
-                self.dict.get(&5).unwrap().get()),
+            5 => format!("{:.2} {}", 
+                self.dict.get(&5).unwrap().get(), 
+                if self.dict.get(&5).unwrap().get() >= 0.52 {"/!\\"} else {"   "}),
             6 => format!("{:.2}", 
                 self.dict.get(&6).unwrap().get()),
             7 => format!("{:.2}", 
@@ -282,26 +281,26 @@ impl Default for Effect {
             right_pos: 0.0,
 
             // filters
-            block_dc_l: DcBlock::new(44100.0),
-            block_dc_r: DcBlock::new(44100.0),
-            tone_lp_l: LowPass1P::new(44100.0),
-            tone_lp_r: LowPass1P::new(44100.0),
-            fb_antialias_l_1: LowPass1P::new(44100.0),
-            fb_antialias_r_1: LowPass1P::new(44100.0),
-            fb_antialias_l_2: LowPass1P::new(44100.0),
-            fb_antialias_r_2: LowPass1P::new(44100.0),
-            fb_antialias_l_3: LowPass1P::new(44100.0),
-            fb_antialias_r_3: LowPass1P::new(44100.0),
+            block_dc_l: DcBlock::new(),
+            block_dc_r: DcBlock::new(),
+            tone_lp_l: LowPass1P::new(),
+            tone_lp_r: LowPass1P::new(),
+            fb_antialias_l_1: LowPass1P::new(),
+            fb_antialias_r_1: LowPass1P::new(),
+            fb_antialias_l_2: LowPass1P::new(),
+            fb_antialias_r_2: LowPass1P::new(),
+            fb_antialias_l_3: LowPass1P::new(),
+            fb_antialias_r_3: LowPass1P::new(),
 
             // param filters
-            param_1_lp: LowPass1P::new(44100.0),
-            param_2_lp: LowPass1P::new(44100.0),
-            param_3_lp: LowPass1P::new(44100.0),
-            param_4_lp: LowPass1P::new(44100.0),
-            param_5_lp: LowPass1P::new(44100.0),
-            param_6_lp: LowPass1P::new(44100.0),
-            param_7_lp: LowPass1P::new(44100.0),
-            param_8_lp: LowPass1P::new(44100.0),
+            param_1_lp: LowPass1P::new(),
+            param_2_lp: LowPass1P::new(),
+            param_3_lp: LowPass1P::new(),
+            param_4_lp: LowPass1P::new(),
+            param_5_lp: LowPass1P::new(),
+            param_6_lp: LowPass1P::new(),
+            param_7_lp: LowPass1P::new(),
+            param_8_lp: LowPass1P::new(),
 
             // dithering
             in_dith_l: DenormalDither::new(3),
@@ -347,6 +346,27 @@ impl Plugin for Effect {
         self.logger.log(&format!("Plugin::set_sample_rate() callback with rate: {}\n", rate)[..]);
         self.sr = rate as f64;
         self.scale = 44100.0 / rate as f64;
+
+        self.block_dc_l.set_sr(rate as f64);
+        self.block_dc_r.set_sr(rate as f64);
+        self.tone_lp_l.set_sr(rate as f64);
+        self.tone_lp_r.set_sr(rate as f64);
+        self.fb_antialias_l_1.set_sr(rate as f64);
+        self.fb_antialias_r_1.set_sr(rate as f64);
+        self.fb_antialias_l_2.set_sr(rate as f64);
+        self.fb_antialias_r_2.set_sr(rate as f64);
+        self.fb_antialias_l_3.set_sr(rate as f64);
+        self.fb_antialias_r_3.set_sr(rate as f64);
+
+        // param filters
+        self.param_1_lp.set_sr(rate as f64);
+        self.param_2_lp.set_sr(rate as f64);
+        self.param_3_lp.set_sr(rate as f64);
+        self.param_4_lp.set_sr(rate as f64);
+        self.param_5_lp.set_sr(rate as f64);
+        self.param_6_lp.set_sr(rate as f64);
+        self.param_7_lp.set_sr(rate as f64);
+        self.param_8_lp.set_sr(rate as f64);
     }
 
     // called once
