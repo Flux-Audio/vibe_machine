@@ -58,7 +58,7 @@ my walkthrough of each control, I advise you to only read this after doing your 
 - moisture: a funny name for a dry/wet control.
 
 ## Known bugs
-For a detailed list, see the [issues](https://github.com/Flux-Audio/vibe_machine/issues) tab.
+For a detailed list, see the [issues](https://github.com/PanieriLorenzo/vibe_machine/issues) tab.
 
 (No bugs 😎😎😎💯🔥 but probably not for long 😧😰😨😱😭)
 
